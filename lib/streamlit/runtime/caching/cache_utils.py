@@ -220,14 +220,22 @@ class CachedFunc:
             with spinner(spinner_message, _cache=True):
                 if asyncio.iscoroutinefunction(self._info.func):
                     return self._get_or_create_cached_value(args, kwargs)
-                loop = asyncio.get_running_loop()
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:  # イベントループが存在しない場合
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
                 return asyncio.run_coroutine_threadsafe(
                     self._get_or_create_cached_value(args, kwargs), loop
                 ).result()
         else:
             if asyncio.iscoroutinefunction(self._info.func):
                 return self._get_or_create_cached_value(args, kwargs)
-            loop = asyncio.get_running_loop()
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:  # イベントループが存在しない場合
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             return asyncio.run_coroutine_threadsafe(
                 self._get_or_create_cached_value(args, kwargs), loop
             ).result()
