@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import functools
 import hashlib
@@ -165,7 +166,7 @@ def make_cached_func_wrapper(info: CachedFuncInfo) -> Callable[..., Any]:
 class BoundCachedFunc:
     """A wrapper around a CachedFunc that binds it to a specific instance in case of
     decorated function is a class method."""
-
+    
     def __init__(self, cached_func: CachedFunc, instance: Any):
         self._cached_func = cached_func
         self._instance = instance
@@ -215,9 +216,17 @@ class CachedFunc:
             else:
                 spinner_message = f"Running `{name}(...)`."
 
-        return self._get_or_create_cached_value(args, kwargs, spinner_message)
+        if self._info.show_spinner or isinstance(self._info.show_spinner, str):
+            with spinner(message, _cache=True):
+                if asyncio.iscoroutinefunction(self._info.func):
+                    return self._get_or_create_cached_value(args, kwargs)
+                return asyncio.run(self._get_or_create_cached_value(args, kwargs))
+        else:
+            if asyncio.iscoroutinefunction(self._info.func):
+                return self._get_or_create_cached_value(args, kwargs)
+            return asyncio.run(self._get_or_create_cached_value(args, kwargs))
 
-    def _get_or_create_cached_value(
+    async def _get_or_create_cached_value(
         self,
         func_args: tuple[Any, ...],
         func_kwargs: dict[str, Any],
@@ -257,7 +266,9 @@ class CachedFunc:
             else contextlib.nullcontext()
         )
         with spinner_or_no_context:
-            return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+            return await self._handle_cache_miss(
+                cache, value_key, func_args, func_kwargs
+            )
 
     def _handle_cache_hit(self, result: CachedResult) -> Any:
         """Handle a cache hit: replay the result's cached messages, and return its
@@ -269,7 +280,7 @@ class CachedFunc:
         )
         return result.value
 
-    def _handle_cache_miss(
+    async def _handle_cache_miss(
         self,
         cache: Cache,
         value_key: str,
@@ -315,7 +326,10 @@ class CachedFunc:
             with self._info.cached_message_replay_ctx.calling_cached_function(
                 self._info.func
             ):
-                computed_value = self._info.func(*func_args, **func_kwargs)
+                if asyncio.iscoroutinefunction(self._info.func):
+                    computed_value = await self._info.func(*func_args, **func_kwargs)
+                else:
+                    computed_value = self._info.func(*func_args, **func_kwargs)
 
             # We've computed our value, and now we need to write it back to the cache
             # along with any "replay messages" that were generated during value computation.
