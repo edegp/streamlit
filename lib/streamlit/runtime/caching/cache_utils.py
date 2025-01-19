@@ -217,18 +217,22 @@ class CachedFunc:
                 spinner_message = f"Running `{name}(...)`."
 
         if self._info.show_spinner or isinstance(self._info.show_spinner, str):
-            with spinner(spinner_messagez, _cache=True):
+            with spinner(spinner_message, _cache=True):
                 if asyncio.iscoroutinefunction(self._info.func):
                     return self._get_or_create_cached_value(args, kwargs)
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                return loop.run_until_complete(elf._get_or_create_cached_value(args, kwargs))
+                return loop.run_until_complete(
+                    self._get_or_create_cached_value(args, kwargs)
+                )
         else:
             if asyncio.iscoroutinefunction(self._info.func):
                 return self._get_or_create_cached_value(args, kwargs)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            return loop.run_until_complete(self._get_or_create_cached_value(args, kwargs))
+            return loop.run_until_complete(
+                self._get_or_create_cached_value(args, kwargs)
+            )
 
     async def _get_or_create_cached_value(
         self,
