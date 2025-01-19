@@ -166,7 +166,7 @@ def make_cached_func_wrapper(info: CachedFuncInfo) -> Callable[..., Any]:
 class BoundCachedFunc:
     """A wrapper around a CachedFunc that binds it to a specific instance in case of
     decorated function is a class method."""
-    
+
     def __init__(self, cached_func: CachedFunc, instance: Any):
         self._cached_func = cached_func
         self._instance = instance
@@ -217,7 +217,7 @@ class CachedFunc:
                 spinner_message = f"Running `{name}(...)`."
 
         if self._info.show_spinner or isinstance(self._info.show_spinner, str):
-            with spinner(message, _cache=True):
+            with spinner(spinner_message, _cache=True):
                 if asyncio.iscoroutinefunction(self._info.func):
                     return self._get_or_create_cached_value(args, kwargs)
                 return asyncio.run(self._get_or_create_cached_value(args, kwargs))
